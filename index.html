@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2025 Year-end Ball Ticket</title>
+
+<style>
+  body {
+    margin: 0;
+    font-family: "Pretendard","Noto Sans KR", sans-serif;
+    background: linear-gradient(160deg, #210035, #12001f, #080013);
+    color: #fff;
+    padding: 18px;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 18px;
+    padding: 22px;
+    margin-bottom: 24px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 0 15px rgba(140, 53, 255, 0.2);
+  }
+
+  h1 { text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; opacity:0.75; margin-bottom:25px; }
+
+  input {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    outline: none;
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    font-size: 16px;
+  }
+
+  button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #a64bff, #7a33ff);
+    color: white;
+    font-size: 17px;
+    margin-top: 14px;
+    font-weight: 600;
+    box-shadow: 0 0 10px rgba(163, 76, 255, 0.4);
+    cursor: pointer;
+  }
+
+  .admin-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.25);
+    margin-top: 22px;
+  }
+
+  .ticket-box {
+    margin-top: 16px;
+    background: rgba(255,255,255,0.12);
+    padding: 18px;
+    border-radius: 14px;
+    text-align: center;
+  }
+
+  #adminArea { display:none; }
+
+  .ticket-card {
+    background: rgba(255,255,255,0.09);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+
+  .ticket-title { font-size:17px; font-weight:600; }
+  .ticket-time { opacity:0.7; font-size:14px; margin-bottom:8px; }
+
+  .badge {
+    display:inline-block;
+    padding:4px 10px;
+    border-radius:10px;
+    font-size:13px;
+    margin-bottom:8px;
+  }
+  .done { background:#8f4bff; color:#fff; }
+  .notyet { background:#333; color:#ddd; }
+
+  .row-btns {
+    display:flex;
+    gap:8px;
+    margin-top:8px;
+  }
+
+  .subbtn {
+    flex:1;
+    padding:10px;
+    border-radius:10px;
+    border:none;
+    font-size:14px;
+    cursor:pointer;
+    background:rgba(255,255,255,0.1);
+    color:#fff;
+  }
+
+  .copy-btn { background: linear-gradient(135deg,#ff7de1,#d146ff); }
+  .delete-btn { background:#ff3f6c; }
+</style>
+</head>
+
+<body>
+
+<h1>💜 2025 Year-end Ball</h1>
+<p class="sub">티켓 발급 · 관리자 시스템(최종 통합판)</p>
+
+<!-- 티켓 발급 -->
+<div class="card">
+  <h2 style="margin-top:0;">🎫 티켓 발급</h2>
+  <input id="buyer" placeholder="이름을 입력하세요">
+  <button onclick="makeTicket()">티켓 발급하기</button>
+
+  <div id="ticketBox" class="ticket-box" style="display:none;">
+    <h3>🎟 발급된 티켓</h3>
+    <p id="ticketName"></p>
+    <p id="ticketCode" style="font-size:22px; color:#d7b4ff;"></p>
+  </div>
+</div>
+
+<button class="admin-btn" onclick="toggleAdmin()">🔐 관리자 모드</button>
+
+<!-- 관리자 영역 -->
+<div id="adminArea" class="card">
+  <h2>🛠 관리자 영역</h2>
+
+  <input id="search" placeholder="이름 또는 코드 검색" oninput="renderAdmin()">
+
+  <h3>총 티켓: <span id="count">0</span></h3>
+
+  <button onclick="exportTickets()">📤 티켓 데이터 저장(다운로드)</button>
+  <button onclick="importTickets()">📥 티켓 데이터 불러오기</button>
+  <input type="file" id="fileInput" style="display:none;" accept=".json">
+
+  <div id="adminList" style="margin-top:16px;"></div>
+</div>
+
+<script>
+/* ============================
+   티켓 발급
+============================ */
+function makeTicket() {
+  const name = buyer.value.trim();
+  if (!name) return alert("이름을 입력해주세요!");
+
+  const code = "BALL-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+  const time = new Date().toLocaleString();
+
+  ticketName.innerText = `구매자: ${name}`;
+  ticketCode.innerText = code;
+  ticketBox.style.display = "block";
+
+  let list = JSON.parse(localStorage.getItem("tickets") || "[]");
+  list.push({ name, code, time, checked: false });
+  localStorage.setItem("tickets", JSON.stringify(list));
+
+  renderAdmin();
+}
+
+/* 관리자 ON/OFF */
+function toggleAdmin() {
+  const a = document.getElementById("adminArea");
+  a.style.display = a.style.display === "none" ? "block" : "none";
+  renderAdmin();
+}
+
+/* 티켓 상태 토글 */
+function toggleCheck(i) {
+  let list = JSON.parse(localStorage.getItem("tickets") || "[]");
+  list[i].checked = !list[i].checked;
+  localStorage.setItem("tickets", JSON.stringify(list));
+  renderAdmin();
+}
+
+/* 티켓 복사 */
+function copyTicket(i) {
+  let list = JSON.parse(localStorage.getItem("tickets") || "[]");
+  navigator.clipboard.writeText(list[i].code);
+  alert("티켓 코드가 복사되었습니다!");
+}
+
+/* 티켓 삭제 */
+function deleteTicket(i) {
+  if (!confirm("정말 삭제하시겠습니까?")) return;
+
+  let list = JSON.parse(localStorage.getItem("tickets") || "[]");
+  list.splice(i, 1);
+
+  localStorage.setItem("tickets", JSON.stringify(list));
+  renderAdmin();
+}
+
+/* 관리자 리스트 렌더링 */
+function renderAdmin() {
+  const list = JSON.parse(localStorage.getItem("tickets") || "[]");
+  const q = (document.getElementById("search").value || "").toLowerCase();
+  const adminList = document.getElementById("adminList");
+
+  document.getElementById("count").innerText = list.length;
+  adminList.innerHTML = "";
+
+  list.forEach((t, i) => {
+    if (q && !t.name.toLowerCase().includes(q) && !t.code.toLowerCase().includes(q)) return;
+
+    const card = document.createElement("div");
+    card.className = "ticket-card";
+
+    card.innerHTML = `
+      <div class="ticket-title">${t.name} · ${t.code}</div>
+      <div class="ticket-time">${t.time}</div>
+
+      <span class="badge ${t.checked ? "done" : "notyet"}">
+        ${t.checked ? "입장 완료" : "미입장"}
+      </span>
+
+      <div class="row-btns">
+        <button class="subbtn copy-btn" onclick="copyTicket(${i})">복사</button>
+        <button class="subbtn" onclick="toggleCheck(${i})">체크</button>
+        <button class="subbtn delete-btn" onclick="deleteTicket(${i})">삭제</button>
+      </div>
+    `;
+
+    adminList.appendChild(card);
+  });
+}
+
+/* ============================
+   데이터 다운로드
+============================ */
+function exportTickets() {
+  const data = localStorage.getItem("tickets") || "[]";
+  const blob = new Blob([data], { type: "application/json" });
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "tickets_backup.json";
+  a.click();
+}
+
+/* ============================
+   데이터 불러오기
+============================ */
+function importTickets() {
+  const input = document.getElementById("fileInput");
+  input.click();
+
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const json = JSON.parse(evt.target.result);
+        localStorage.setItem("tickets", JSON.stringify(json));
+        alert("데이터가 복원되었습니다!");
+        renderAdmin();
+      } catch {
+        alert("올바른 JSON 파일이 아닙니다.");
+      }
+    };
+
+    reader.readAsText(file);
+  };
+}
+
+renderAdmin();
+</script>
+
+</body>
+</html>
